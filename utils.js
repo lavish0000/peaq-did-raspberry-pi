@@ -14,7 +14,7 @@ export const getPeaqKeyPair = () => {
 
 export const getNetworkApi = async (network) => {
   try {
-    if (global[network.name]) return global[network.name];
+    // if (global[network.name]) return global[network.name];
     const api = new ApiPromise({
       provider: new WsProvider(network.ws),
     });
