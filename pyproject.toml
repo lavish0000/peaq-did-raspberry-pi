@@ -9,6 +9,8 @@ packages = [{include = "raspberry_pi_node_server"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 substrateinterface = "^1.0.0"
+uagents = "^0.3.1"
+substrate-interface = "^1.6.0"
 
 
 [build-system]
