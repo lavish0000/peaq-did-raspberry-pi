@@ -23,7 +23,7 @@ substrate = SubstrateInterface(
     url="wss://wsspc1-qa.agung.peaq.network",
     # ss58_format=42,  # Replace with the SS58 format of your chain
     type_registry_preset="substrate-node-template",
-    )
+)
 
 # Query the balance of the corresponding address
 # result = substrate.query('System', 'Account', [keypair.ss58_address])
@@ -32,13 +32,14 @@ substrate = SubstrateInterface(
 
 alice = Agent(name="alice", seed=seed)
 
+
 @alice.on_interval(period=2.0)
 async def get_balance(ctx: Context):
     ctx.logger.info(f'hello, my name is {ctx.address}')
     result = substrate.query('System', 'Account', [keypair.ss58_address])
     ctx.logger.info(f"Address: {keypair.ss58_address}")
-    ctx.logger.info(f"Balance: {result.value['data']['free'] / 10 ** substrate.token_decimals} {substrate.token_symbol}")
+    ctx.logger.info(
+        f"Balance: {result.value['data']['free'] / 10 ** substrate.token_decimals} {substrate.token_symbol}")
 
 if __name__ == "__main__":
     alice.run()
-
