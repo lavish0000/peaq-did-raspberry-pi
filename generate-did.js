@@ -8,10 +8,6 @@ const {
   VerificationMethod,
   VerificationType,
   Signature,
-  Service,
-  Metadata,
-  ServiceType,
-  Status,
 } = didProto;
 const getDidString = (address) => `did:peaq:${address}`;
 
