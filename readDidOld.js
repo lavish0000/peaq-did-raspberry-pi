@@ -1,7 +1,7 @@
 import { createStorageKeys, generateKeyPair, makePalletQuery } from "./utils.js";
 import pkg from 'peaq-did-proto-js';
 import { cryptoWaitReady } from "@polkadot/util-crypto";
-import { hexToU8a } from "@polkadot/util";
+import { hexToU8a, u8aToHex, } from "@polkadot/util";
 const { Document } = pkg;
 
 const seed =
@@ -12,9 +12,10 @@ export const getDIDDocument = async () => {
     await cryptoWaitReady();
 
     const keyPair = generateKeyPair(seed);
+    console.log("publicKey", u8aToHex(keyPair.publicKey));
     const { hashed_key } = createStorageKeys([
       {
-        value: keyPair.address,
+        value: "5GZ7f6de6HdPGrFpzAac3HDSB6bJHBvwUDqUPjBiG7dq2bTm",
         type: 0,
       },
       { value: name, type: 1 },
@@ -25,7 +26,8 @@ export const getDIDDocument = async () => {
       "attributeStore",
       [hashed_key]
     );
-    const doc = Document.deserializeBinary(hexToU8a(did.value));
+    console.log("DID", did.isStorageFallback);
+    const doc = Document.deserializeBinary(did.value);
   
     const didDocument = doc.toObject();
     console.log("DID Document", didDocument);

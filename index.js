@@ -1,5 +1,5 @@
 import { mnemonicGenerate, cryptoWaitReady, base58Encode, base64Decode, base64Encode } from "@polkadot/util-crypto";
-import { Keyring } from "@polkadot/keyring";
+import { Keyring, encodeAddress } from "@polkadot/keyring";
 import fs from "fs";
 import { generateDidDocument } from "./generate-did.js";
 import { getNetworkApi, getPeaqKeyPair } from "./utils.js";
@@ -7,6 +7,8 @@ import { networks } from "./constants.js";
 import os from "os";
 import { Client } from "ssh2";
 import { u8aToHex, u8aToString } from "@polkadot/util";
+import pkg from 'peaq-did-proto-js';
+const { Document } = pkg;
 
 const controller = "5EsRqVnHsJLMGZMExqZ3QmBdQG4xQ2oUtnVh7in6CHcE51KE";
 
@@ -18,10 +20,10 @@ const generateKeyPair = (mnemonic) => {
 
 const getMachineKeyPair = async () => {
   console.log("Fetching machine key pair from seed.txt...");
-  // if (fs.existsSync("seed.txt")) {
-  //   const seed = fs.readFileSync("seed.txt", "utf8");
-  //   if (seed) return generateKeyPair(seed);
-  // }
+  if (fs.existsSync("seed.txt")) {
+    const seed = fs.readFileSync("seed.txt", "utf8");
+    if (seed) return generateKeyPair(seed);
+  }
 
   console.log("No seed found, generating new key pair...");
   const mnemonic = mnemonicGenerate();
@@ -83,46 +85,140 @@ const callDIDPallet = async (address, didDocumentHash) => {
 
 const main = async () => {
   await cryptoWaitReady();
-  const api = await getNetworkApi(networks.PEAQ);
-  const dids = await api.query.peaqDid.attributeStore.entries();
-  const totalDids = dids.filter((did) => u8aToString(did[1].name) === "peaq-console");
-  console.log("totalDids", totalDids.length);
-  // const pair = await getMachineKeyPair();
-  // console.log("Machine address:", pair.address);
+  // const api = await getNetworkApi(networks.PEAQ);
+  // const dids = await api.query.peaqDid.attributeStore.entries();
 
-  // console.log("Generating DID document...");
-  // const did = generateDidDocument(controller, pair.address);
+  // const totalDids = dids.filter((did) => {
+  //  const doc = Document.deserializeBinary(did[1].value);
+  //   const {id, controller} = doc.toObject();
+  //   const didAddress = id.split(":")[2];
+  //   const controllerAddress = controller.split(":")[2];
+  //   return u8aToString(did[1].name) === "peaq-console" && didAddress !== controllerAddress;
+  // });
+  // console.log("totalDids", totalDids.length);
+  const pair = await getMachineKeyPair();
+  console.log("Machine address:", pair.address);
 
-  // console.log("DID document generated:", did);
+  console.log("Generating DID document...");
+  const did = generateDidDocument(controller, pair.address);
 
-  // console.log("Calling DID pallet...");
-  // await callDIDPallet(pair.address, did);
+  console.log("DID document generated:", did);
+
+  console.log("Calling DID pallet...");
+  await callDIDPallet(pair.address, did);
   console.log("---------Network call complete!----------");
 };
 
-main();
+// main();
 
-const testSsh = async () => {
-  const conn = new Client();
-conn.on('ready', () => {
-  console.log('Client :: ready');
-  conn.exec('git clone https://github.com/peaqnetwork/peaq-did-raspberry-pi.git', (err, stream) => {
-    if (err) throw err;
-    stream.on('close', (code, signal) => {
-      console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-      conn.end();
-    }).on('data', (data) => {
-      console.log('STDOUT: ' + data);
-    }).stderr.on('data', (data) => {
-      console.log('STDERR: ' + data);
-    });
+const getEvents = async () => {
+  await cryptoWaitReady();
+  const peaqKeyPair = getPeaqKeyPair();
+
+console.log("peaq key pair", u8aToHex(peaqKeyPair.sign("l")).length)
+
+  const api = await getNetworkApi(networks.PEAQ);
+  // Subscribe to system events
+api.query.system.events((events) => {
+  // Loop through each event
+  events.forEach((record) => {
+    // Destructure the event data
+    const { event } = record;
+    console.log("Pallet", event.section);
+    console.log("Ex", event.method);
+    // Check if the event is a transfer event
+    if (event.section === 'balances' && event.method === 'Transfer') {
+      // Log the details of the transfer event
+      console.log(`Transfer of ${event.data[1]} from ${event.data[0]} to ${event.data[2]}`);
+    }
   });
-}).connect({
-  host: 'lovish.local',
-  port: 22,
-  username: 'pi',
-  password: 'password' 
 });
-};
+}
+
+// getEvents();
+
+// const testSsh = async () => {
+//   const conn = new Client();
+// conn.on('ready', () => {
+//   console.log('Client :: ready');
+//   conn.exec('git clone https://github.com/peaqnetwork/peaq-did-raspberry-pi.git', (err, stream) => {
+//     if (err) throw err;
+//     stream.on('close', (code, signal) => {
+//       console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+//       conn.end();
+//     }).on('data', (data) => {
+//       console.log('STDOUT: ' + data);
+//     }).stderr.on('data', (data) => {
+//       console.log('STDERR: ' + data);
+//     });
+//   });
+// }).connect({
+//   host: 'lovish.local',
+//   port: 22,
+//   username: 'pi',
+//   password: 'password' 
+// });
+// };
+
+// (async () => {
+//   async function getAllTypes(api) {
+
+//     const types = api.registry.getModuleTypes('peaqDid');
+
+//   console.log(types);
+//     const metadata = await api.rpc.state.getMetadata();
+//     const allTypes = {};
+
+//     console.log('metadata', metadata.asLatest);
+  
+//     metadata.asLatest.modules.forEach((moduleMetadata) => {
+//       const moduleName = moduleMetadata.name.toString();
+//       allTypes[moduleName] = moduleMetadata.types;
+//     });
+  
+//     return allTypes;
+//   }
+  
+//   // usage
+//   const api = await getNetworkApi(networks.PEAQ);
+//   const allTypes = await getAllTypes(api);
+//   console.log(allTypes);
+//   // const moduleMetadata = metadata.asLatest.modules.find(({ name }) => name === 'peaqDid');
+//   // moduleMetadata.types;
+//   })();
 
 // testSsh();
+
+const enaddress = encodeAddress('0x7369626cc50b0000000000000000000000000000000000000000000000000000', 42);
+console.log("Enaddress", enaddress);
+
+// getEvents();
+
+// 5Eg2fntFpTmjt1oL6rFmLWTtLpQdtnS4dautKNcMH1cR3tXY
+// 5Ec4AhPSjjaqkR5BYrJgDs856LjLBNNxZwGT4R5rQHarCHHz
+
+import {SubstrateBatchProcessor} from '@subsquid/substrate-processor';
+import {TypeormDatabase} from '@subsquid/typeorm-store';
+import {lookupArchive} from '@subsquid/archive-registry';
+
+const processor = new SubstrateBatchProcessor()
+  .setGateway(lookupArchive('peaq-parachain', {release: 'ArrowSquid'}))
+  .setRpcEndpoint('https://mpfn1.peaq.network')
+  // .setBlockRange({from: 19_600_000})
+  .addCall({
+    name: ['Balances.transfer_all'],
+  })
+  .setFields({
+    call: {
+      origin: true,
+      success: true 
+    }
+  }) 
+
+processor.run(new TypeormDatabase(), async ctx => {
+  for (let block of ctx.blocks) {
+    for (let call of block.calls) {
+      ctx.log.info(call, `Call:`)
+    }
+  }
+})

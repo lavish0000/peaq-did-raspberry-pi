@@ -1,14 +1,14 @@
 import { Keyring, decodeAddress } from "@polkadot/keyring";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { PEAQ_MNEMONIC, networks } from "./constants.js";
-import { u8aConcat, u8aToU8a } from "@polkadot/util";
+import { u8aConcat, u8aToHex, u8aToString, u8aToU8a } from "@polkadot/util";
 import { blake2AsHex } from "@polkadot/util-crypto";
 
 let peaqKeyPair = "";
 const peaqMnemonic = PEAQ_MNEMONIC;
 
-export const generateKeyPair = (mnemonic) => {
-  const keyring = new Keyring({ type: "sr25519" });
+export const generateKeyPair = (mnemonic, type = 'sr25519') => {
+  const keyring = new Keyring({ type,  });
   const pair = keyring.addFromUri(mnemonic);
   return pair;
 };
@@ -44,7 +44,7 @@ export const makePalletQuery = async (
       const api = await getNetworkApi(networks.PEAQ);
       const data = await api.query[palletName][storeName](...args);
       api.disconnect();
-      return data.toHuman();
+      return data;
     } catch (error) {
       console.error(`Error ${makePalletQuery.name} - `, error);
       return error;
@@ -52,6 +52,7 @@ export const makePalletQuery = async (
 };
 
 export const createStorageKeys = (args) => {
+  console.log("args", args);
   // decode address to byte array
   const keysByteArray = [];
   for (let i = 0; i < args.length; i++) {
@@ -67,5 +68,6 @@ export const createStorageKeys = (args) => {
   const key = u8aConcat(...keysByteArray);
   // encode the key using blake2b
   const hashed_key = blake2AsHex(key, 256);
+  console.log("hashed_key", hashed_key);
   return { hashed_key };
 };
